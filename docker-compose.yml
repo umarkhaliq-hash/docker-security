@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13-alpine
+    environment:
+      POSTGRES_DB: odoo
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: odoo123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - odoo_network
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+
+  odoo:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      HOST: postgres
+      USER: odoo
+      PASSWORD: odoo123
+      DB_NAME: odoo
+      DB_USER: odoo
+      DB_PASSWORD: odoo123
+      DB_HOST: postgres
+      DB_PORT: 5432
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo_data:/var/lib/odoo
+    networks:
+      - odoo_network
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    command: ["odoo", "-i", "base", "-d", "odoo", "--without-demo=all"]
+
+  # Falco for runtime security monitoring
+  # NOTE: Falco requires Linux kernel access and won't work properly on macOS
+  # Uncomment this service only when deploying to a Linux environment
+  # falco:
+  #   image: falcosecurity/falco:latest
+  #   privileged: true
+  #   volumes:
+  #     - /var/run/docker.sock:/host/var/run/docker.sock
+  #     - /dev:/host/dev
+  #     - /proc:/host/proc:ro
+  #     - /boot:/host/boot:ro
+  #     - /lib/modules:/host/lib/modules:ro
+  #     - /usr:/host/usr:ro
+  #     - /etc:/host/etc:ro
+  #     - ./falco-rules:/etc/falco/rules.d
+  #   networks:
+  #     - odoo_network
+  #   command: falco --modern-bpf
+
+volumes:
+  postgres_data:
+  odoo_data:
+
+networks:
+  odoo_network:
+    driver: bridge

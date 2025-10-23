@@ -1,0 +1,32 @@
+- rule: Detect Suspicious Network Activity in Odoo
+  desc: Alert on suspicious network connections from Odoo container
+  condition: >
+    (container.name contains "odoo" and 
+     (fd.type=ipv4 or fd.type=ipv6) and 
+     (fd.ip != "0.0.0.0" and fd.ip != "127.0.0.1" and fd.ip != "postgres"))
+  output: >
+    Suspicious network activity in Odoo container 
+    (user=%user.name command=%proc.cmdline connection=%fd.name)
+  priority: WARNING
+
+- rule: Detect File Changes in Odoo
+  desc: Alert on unexpected file modifications in Odoo container
+  condition: >
+    (container.name contains "odoo" and 
+     (open_write or rename or unlink) and 
+     not fd.name startswith "/tmp" and 
+     not fd.name startswith "/var/lib/odoo")
+  output: >
+    Unexpected file modification in Odoo container 
+    (user=%user.name command=%proc.cmdline file=%fd.name)
+  priority: WARNING
+
+- rule: Detect Privilege Escalation
+  desc: Alert on potential privilege escalation attempts
+  condition: >
+    (container.name contains "odoo" or container.name contains "postgres") and
+    (proc.name=sudo or proc.name=su or proc.name=passwd)
+  output: >
+    Potential privilege escalation in container 
+    (user=%user.name command=%proc.cmdline container=%container.name)
+  priority: CRITICAL
